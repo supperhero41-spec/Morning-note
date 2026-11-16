@@ -24,7 +24,7 @@ Token là "mật khẩu" quản trị: chỉ lưu trong trình duyệt bạn dù
 
 - **Cập nhật**: gửi lệnh cào tin tới GitHub Actions. Mất khoảng 3–6 phút (gồm thời gian chờ máy); trang hiện tiến độ và tự tải dữ liệu mới khi xong.
 - Các thao tác sao, ẩn tin, chuyển mục, xóa tin, cấu hình được lưu ngay vào `config.json` (mỗi lần lưu là một commit). Lượt cào tin sau dùng cấu hình mới.
-- **Giá chỉ số tự cập nhật mỗi phút** ngay trong trình duyệt (TradingView cho chỉ số/hàng hóa/vàng, Binance cho tiền điện tử), không cần bấm Cập nhật. Chỉ số không có mã tương ứng (S&P/ASX 200) giữ giá của lần cào gần nhất. Bản chạy trên máy vẫn dùng nguồn cũ (Yahoo, Investing, CoinGecko).
+- **Giá chỉ số tự cập nhật 5 giây một lần** ngay trong trình duyệt (TradingView cho chỉ số/hàng hóa/vàng, Binance cho tiền điện tử), không cần bấm Cập nhật. Chỉ số không có mã tương ứng (S&P/ASX 200) giữ giá của lần cào gần nhất. Bản chạy trên máy vẫn dùng nguồn cũ (Yahoo, Investing, CoinGecko).
 - Xuất PNG/PDF chạy trong trình duyệt như cũ.
 
 ## Chạy trên máy

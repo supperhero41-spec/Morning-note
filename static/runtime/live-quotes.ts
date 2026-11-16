@@ -1,6 +1,6 @@
 // Live quotes fetched directly by the browser (GitHub Pages build only).
 // TradingView's public scanner and Binance's public market-data API both allow cross-origin reads,
-// so prices refresh every minute without running the GitHub scraper. Assets without a mapping
+// so prices refresh every few seconds without running the GitHub scraper. Assets without a mapping
 // keep the quote from the last scrape.
 import type {Asset,Quote} from '../../lib/catalog';
 
@@ -36,7 +36,7 @@ async function fromTradingView(assets:Asset[],now:number){
  for(const row of json.data||[]){
   const [close,percent,change,updated,mode]=row.d||[];const price=finite(close);if(price===null)continue;
   const {label}=delayLabel(mode);
-  for(const a of byTicker.get(row.s)||[])live.set(a.id,{id:a.id,price,change:finite(change),percent:finite(percent),time:finite(updated)?updated*1000:now,fetched:now,source:'TradingView',url:'https://www.tradingview.com/symbols/'+String(row.s).replace(':','-')+'/',label,basis:'So phiên trước',detail:'Mã '+row.s+' trên TradingView, trình duyệt tự cập nhật mỗi phút. Giá có thể lệch nhẹ so với nguồn của bản cào tin.'});
+  for(const a of byTicker.get(row.s)||[])live.set(a.id,{id:a.id,price,change:finite(change),percent:finite(percent),time:finite(updated)?updated*1000:now,fetched:now,source:'TradingView',url:'https://www.tradingview.com/symbols/'+String(row.s).replace(':','-')+'/',label,basis:'So phiên trước',detail:'Mã '+row.s+' trên TradingView, trình duyệt tự cập nhật vài giây một lần. Giá có thể lệch nhẹ so với nguồn của bản cào tin.'});
  }
 }
 
@@ -49,15 +49,16 @@ async function fromBinance(assets:Asset[],now:number){
  for(const t of (await r.json()) as any[]){
   const price=Number(t.lastPrice);if(!Number.isFinite(price)||price<=0)continue;
   const base=String(t.symbol).replace(/USDT$/,'');
-  for(const a of pairs.get(t.symbol)||[])live.set(a.id,{id:a.id,price,change:Number(t.priceChange),percent:Number(t.priceChangePercent),time:Number(t.closeTime)||now,fetched:now,source:'Binance',url:'https://www.binance.com/en/trade/'+base+'_USDT',label:'Gần thời gian thực',basis:'So 24 giờ trước',detail:'Cặp '+t.symbol+' trên Binance (USDT ≈ USD), trình duyệt tự cập nhật mỗi phút.'});
+  for(const a of pairs.get(t.symbol)||[])live.set(a.id,{id:a.id,price,change:Number(t.priceChange),percent:Number(t.priceChangePercent),time:Number(t.closeTime)||now,fetched:now,source:'Binance',url:'https://www.binance.com/en/trade/'+base+'_USDT',label:'Gần thời gian thực',basis:'So 24 giờ trước',detail:'Cặp '+t.symbol+' trên Binance (USDT ≈ USD), trình duyệt tự cập nhật vài giây một lần.'});
  }
 }
 
-/** Refresh live quotes for the configured, visible assets. Never throws. */
+/** Refresh live quotes for the configured, visible assets. Never throws; false when a source failed. */
 export async function updateLiveQuotes(assets:Asset[],hidden:string[]=[]){
  const visible=assets.filter(a=>!hidden.includes(a.id)),now=Date.now();
  const ids=new Set(visible.map(a=>a.id));for(const id of [...live.keys()])if(!ids.has(id))live.delete(id);
- await Promise.allSettled([fromTradingView(visible,now),fromBinance(visible,now)]);
+ const results=await Promise.allSettled([fromTradingView(visible,now),fromBinance(visible,now)]);
+ return results.every(r=>r.status==='fulfilled');
 }
 
 /** Replace scraped quotes with live ones (drops duplicate ids, e.g. old per-coin rows). */

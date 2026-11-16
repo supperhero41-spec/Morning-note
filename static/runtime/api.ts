@@ -11,7 +11,7 @@ import * as settingsRoute from '../../app/api/settings/route';
 import * as editorialRoute from '../../app/api/editorial/route';
 import {getSettings} from '../../lib/data';
 import {configuredAssets} from '../../lib/catalog';
-import {updateLiveQuotes,mergeLiveQuotes} from './live-quotes';
+import {updateLiveQuotes,mergeLiveQuotes,liveQuotes} from './live-quotes';
 
 type ConfigRow={key:string;value:string};
 type CacheRow={key:string;payload:string;attempted_at:number;succeeded_at:number;error:string|null};
@@ -126,10 +126,18 @@ export async function refreshViaGitHub(progress:(text:string)=>void){
  throw new Error('Quá 25 phút chưa có dữ liệu mới. Xem tab Actions trên GitHub.');
 }
 
-/** Browser-side quotes: refresh now, then every minute while the tab is visible. */
+/** Browser-side quotes: every 5 s while the tab is visible; slow down to 30 s after a source error (e.g. rate limit). */
+const LIVE_MS=5000,BACKOFF_MS=30000;
 export async function startLiveQuotes(){
- const tick=async()=>{try{const settings=await getSettings(env);await updateLiveQuotes(configuredAssets(settings),settings.hiddenAssets)}catch{}};
+ let timer:number|undefined;
+ const tick=async()=>{
+  let ok=false;
+  try{const settings=await getSettings(env);ok=await updateLiveQuotes(configuredAssets(settings),settings.hiddenAssets)}catch{}
+  window.dispatchEvent(new CustomEvent('market-note-live-quotes',{detail:[...liveQuotes().values()]}));
+  return ok;
+ };
+ const loop=async()=>{clearTimeout(timer);if(document.hidden)return;const ok=await tick();timer=window.setTimeout(loop,ok?LIVE_MS:BACKOFF_MS)};
  await Promise.race([tick(),new Promise(r=>setTimeout(r,8000))]);
- setInterval(()=>{if(!document.hidden)void tick()},60000);
- document.addEventListener('visibilitychange',()=>{if(!document.hidden)void tick()});
+ timer=window.setTimeout(loop,LIVE_MS);
+ document.addEventListener('visibilitychange',()=>{if(document.hidden)clearTimeout(timer);else void loop()});
 }
