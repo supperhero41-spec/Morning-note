@@ -2,7 +2,7 @@ import {createRoot} from 'react-dom/client';
 import {useState,type CSSProperties} from 'react';
 import '../app/globals.css';
 import Dashboard from '../app/dashboard';
-import {load,installFetchShim,refreshViaGitHub,syncView} from './runtime/api';
+import {load,installFetchShim,refreshViaGitHub,syncView,startLiveQuotes} from './runtime/api';
 import {getRepo,getToken,setRepo,setToken} from './runtime/github';
 
 const box:CSSProperties={maxWidth:560,margin:'64px auto',padding:'28px 32px',background:'#fff',border:'1px solid #e4e9f1',borderRadius:14,font:'14px/1.55 Arial,sans-serif',color:'#17263f'};
@@ -37,6 +37,7 @@ async function start(){
   installFetchShim();
   const info=await load();
   (globalThis as any).__marketNoteRefresh=refreshViaGitHub;
+  await startLiveQuotes();
   setInterval(()=>{void syncView().catch(()=>{})},180000);
   const snapshot=(await (await fetch("/api/data")).json()) as any;
   root.render(<>
