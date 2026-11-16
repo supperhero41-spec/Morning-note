@@ -1,7 +1,5 @@
 name: Cào tin (lưu vào nhánh data)
 on:
-  schedule:
-    - cron: '*/30 * * * *'
   workflow_dispatch:
 permissions:
   contents: write

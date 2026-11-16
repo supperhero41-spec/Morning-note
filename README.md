@@ -6,7 +6,7 @@ Trang quản trị chạy hoàn toàn trên GitHub, không cần Cloudflare hay 
 - **Nhánh `data`** là nơi lưu dữ liệu:
   - `config.json`: mọi chỉnh sửa của admin (sao, ẩn tin, chuyển mục, xóa tin, cấu hình nguồn/chỉ số). Trang quản trị commit file này qua GitHub API mỗi khi bạn lưu.
   - `cache.json.gz`: cache của bộ cào tin. `view.json.gz`: phần dữ liệu trang quản trị đọc.
-- **GitHub Actions** (`.github/workflows/update-data.yml`) cào tin: dựng app tại chỗ với D1 cục bộ, nạp dữ liệu từ nhánh `data`, gọi `/api/refresh` như nút Cập nhật cũ, rồi ghi lại nhánh `data`. Chạy khi bấm **Cập nhật** trên trang, và tự chạy mỗi 30 phút.
+- **GitHub Actions** (`.github/workflows/update-data.yml`) cào tin: dựng app tại chỗ với D1 cục bộ, nạp dữ liệu từ nhánh `data`, gọi `/api/refresh` như nút Cập nhật cũ, rồi ghi lại nhánh `data`. Chỉ chạy khi bấm **Cập nhật** trên trang (không có lịch tự động).
 
 Không có trang khách hàng trên GitHub.
 
@@ -24,7 +24,6 @@ Token là "mật khẩu" quản trị: chỉ lưu trong trình duyệt bạn dù
 
 - **Cập nhật**: gửi lệnh cào tin tới GitHub Actions. Mất khoảng 3–6 phút (gồm thời gian chờ máy); trang hiện tiến độ và tự tải dữ liệu mới khi xong.
 - Các thao tác sao, ẩn tin, chuyển mục, xóa tin, cấu hình được lưu ngay vào `config.json` (mỗi lần lưu là một commit). Lượt cào tin sau dùng cấu hình mới.
-- Trang mở sẵn sẽ tự kiểm tra dữ liệu mới mỗi 3 phút.
 - Xuất PNG/PDF chạy trong trình duyệt như cũ.
 
 ## Chạy trên máy
