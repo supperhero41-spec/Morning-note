@@ -1,0 +1,63 @@
+name: Cào tin (lưu vào nhánh data)
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: scrape
+  cancel-in-progress: false
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      npm_config_minimum_release_age: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Enable pnpm
+        run: corepack enable
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Load data branch
+        run: |
+          mkdir -p .data
+          if git fetch --depth=1 origin +data:refs/remotes/origin/data; then
+            for f in config.json cache.json.gz; do git show origin/data:$f > .data/$f 2>/dev/null || rm -f .data/$f; done
+          fi
+          ls -la .data
+      - name: Prepare local database
+        run: |
+          pnpm exec wrangler d1 migrations apply DB --local --config wrangler.json
+          node scripts/data-sync.mjs import .data
+      - name: Scrape news and quotes
+        run: pnpm scrape
+      - name: Export data
+        run: node scripts/data-sync.mjs export .data
+      - name: Push data branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          export GIT_INDEX_FILE="$RUNNER_TEMP/data-index"
+          # The data branch keeps a single commit (no history growth). config.json is owned by
+          # the admin page, so always take the newest one from the remote before replacing the branch.
+          for attempt in 1 2 3 4 5; do
+            if git fetch --depth=1 origin +data:refs/remotes/origin/data 2>/dev/null; then
+              git show origin/data:config.json > .data/config.json 2>/dev/null || true
+              lease="--force-with-lease=refs/heads/data:$(git rev-parse origin/data)"
+            else
+              lease="--force-with-lease=refs/heads/data:"
+            fi
+            rm -f "$GIT_INDEX_FILE"
+            for f in config.json cache.json.gz view.json.gz; do
+              git update-index --add --cacheinfo "100644,$(git hash-object -w .data/$f),$f"
+            done
+            commit=$(git commit-tree "$(git write-tree)" -m "Dữ liệu $(date -u +%Y-%m-%dT%H:%MZ)")
+            if git push "$lease" origin "$commit:refs/heads/data"; then exit 0; fi
+            echo "Data branch changed during push, retrying ($attempt)…"; sleep 3
+          done
+          exit 1
